@@ -19,7 +19,7 @@ def dword(d):
     return struct.pack('=l', d)
 
 
-def color(r, g, b):
+def color(r: float, g: float, b: float):
     # Acepta valores de 0 a 1
     return bytes([int(b * 255), int(g * 255), int(r * 255)])
 
@@ -67,7 +67,7 @@ class Renderer(object):
         self.vpWidth = width
         self.vpHeight = height
 
-    def glPoint_NDC(self, x: int, y: int, color=None):
+    def glPoint_NDC(self, x: int, y: int, color:color=None):
 
         if x < -1 or x > 1:
             return
@@ -80,15 +80,29 @@ class Renderer(object):
         if (0 <= x <= self.width) and (0 <= y <= self.height):
             self.pixels[int(y)][int(x)] = color or self.curr_color
 
-    def glPoint(self, x: int, y: int, color=None):
+    def glPointScreen(self, x: int, y: int, color: color = None):
+        if (0 <= x <= self.width) and (0 <= y <= self.height):
+            self.pixels[int(y)][int(x)] = color or self.curr_color
 
+    def glPoint(self, x: int, y: int, color: color = None):
         if x < self.vpX or x >= self.vpX + self.vpWidth or y < self.vpY or y >= self.vpY + self.vpHeight:
             return
 
         if (0 <= x <= self.width) and (0 <= y <= self.height):
             self.pixels[int(y)][int(x)] = color or self.curr_color
 
-    def glLine(self, v0: V2, v1: V2, color=None):
+    def drawViewPort(self, color: color = None):
+        self.glLine(V2(self.vpX, self.vpY), V2(
+            self.vpX, self.vpY + self.vpHeight), color, isViewPort=False)
+        self.glLine(V2(self.vpX, self.vpY), V2(
+            self.vpX + self.vpWidth, self.vpY), color, isViewPort=False)
+
+        self.glLine(V2(self.vpX + self.vpWidth, self.vpY),
+                    V2(self.vpX + self.vpWidth, self.vpY + self.vpHeight), color, isViewPort=False)
+        self.glLine(V2(self.vpX, self.vpY + self.vpHeight),
+                    V2(self.vpX + self.vpWidth, self.vpY + self.vpHeight), color, isViewPort=False)
+
+    def glLine(self, v0: V2, v1: V2, color: color = None, isViewPort: bool = True):
         x0 = v0.x
         x1 = v1.x
         y0 = v0.y
@@ -117,9 +131,15 @@ class Renderer(object):
 
         for x in range(x0, x1 + 1):
             if steep:
-                self.glPoint(y, x, color=color)
+                if isViewPort:
+                    self.glPoint(y, x, color=color)
+                else:
+                    self.glPointScreen(y, x, color)
             else:
-                self.glPoint(x, y, color=color)
+                if isViewPort:
+                    self.glPoint(x, y, color=color)
+                else:
+                    self.glPointScreen(x, y, color)
 
             offset += m
             if offset >= limit:
@@ -134,7 +154,7 @@ class Renderer(object):
         mY = int(self.vpHeight / 2)
         cX = self.vpX + mX + (mX * x)
         cY = self.vpY + mY + (mY * y)
-        self.pixels[int(cX)][int(cY)] = self.curr_color
+        self.glPointScreen(cX, cY)
 
     def glFinish(self, filename: str):
         file = open(filename, 'wb')

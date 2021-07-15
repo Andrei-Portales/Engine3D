@@ -6,16 +6,14 @@ height = 540
 
 rd = Renderer(width, height)
 
-rd.glClearColor(1, 1, 1)
+rd.glClearColor(0, 0, 0)
 rd.glClear()
-
 
 
 # rd.glViewPort(200, 200, 100, 100)
 
 
-
-rd.glColor(1, 1, 1)
+# rd.glColor(0, 0, 0)
 
 # for x in range(960):
 #     for y in range(60):
@@ -26,17 +24,17 @@ rd.glColor(1, 1, 1)
 # rd.glLine(V2(900, 500), V2(600, 100), color=color(0, 0, 1))
 # rd.glLine(V2(200, 400), V2(500, 400), color=color(0.2, 0.2, 1))
 
-rd.glViewPort(20, 20, 200, 200)
+rd.glViewPort(20, 40, 500, 200)
 
-rd.glColor(0, 0, 0)
+rd.glColor(1, 1, 1)
 rd.glVertex(0, 0)
 rd.glVertex(-1, -1)
 rd.glVertex(1, 1)
 rd.glVertex(-1, 1)
 rd.glVertex(1, -1)
 
-rd.glLine(V2(200, 400), V2(200, 100), color=color(0.2, 0.2, 1))
-
+# rd.glLine(V2(100, 400), V2(200, 100), color=color(0.2, 0.2, 1))
+# rd.drawViewPort(color(1, 0, 0))
 
 
 rd.glFinish('output.bmp')
