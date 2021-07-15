@@ -80,9 +80,6 @@ class Renderer(object):
         if (0 <= x <= self.width) and (0 <= y <= self.height):
             self.pixels[int(y)][int(x)] = color or self.curr_color
 
-    def glPointScreen(self, x: int, y: int, color: color = None):
-        if (0 <= x <= self.width) and (0 <= y <= self.height):
-            self.pixels[int(y)][int(x)] = color or self.curr_color
 
     def glPoint(self, x: int, y: int, color: color = None):
         if x < self.vpX or x >= self.vpX + self.vpWidth or y < self.vpY or y >= self.vpY + self.vpHeight:
@@ -91,16 +88,6 @@ class Renderer(object):
         if (0 <= x <= self.width) and (0 <= y <= self.height):
             self.pixels[int(y)][int(x)] = color or self.curr_color
 
-    def drawViewPort(self, color: color = None):
-        self.glLine(V2(self.vpX, self.vpY), V2(
-            self.vpX, self.vpY + self.vpHeight), color, isViewPort=False)
-        self.glLine(V2(self.vpX, self.vpY), V2(
-            self.vpX + self.vpWidth, self.vpY), color, isViewPort=False)
-
-        self.glLine(V2(self.vpX + self.vpWidth, self.vpY),
-                    V2(self.vpX + self.vpWidth, self.vpY + self.vpHeight), color, isViewPort=False)
-        self.glLine(V2(self.vpX, self.vpY + self.vpHeight),
-                    V2(self.vpX + self.vpWidth, self.vpY + self.vpHeight), color, isViewPort=False)
 
     def glLine(self, v0: V2, v1: V2, color: color = None, isViewPort: bool = True):
         x0 = v0.x
@@ -146,15 +133,15 @@ class Renderer(object):
                 y += 1 if y0 < y1 else - 1
                 limit += 1
 
-    def glVertex(self, x: int, y: int):
-        if (x > 1 or x < -1) or (y > 1 or y < -1):
+    def glVertex(self, x: int, y: int, color:color=None):
+        if (-1 > x > 1) or (-1 > y > 1):
             raise 'Invalid vertex'
 
         mX = int(self.vpWidth / 2)
         mY = int(self.vpHeight / 2)
         cX = self.vpX + mX + (mX * x)
         cY = self.vpY + mY + (mY * y)
-        self.glPointScreen(cX, cY)
+        self.glPoint(cX, cY, color)
 
     def glFinish(self, filename: str):
         file = open(filename, 'wb')
