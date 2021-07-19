@@ -67,6 +67,13 @@ class Renderer(object):
         self.vpWidth = width
         self.vpHeight = height
 
+    def glViewPortClear(self, color:color):
+        for x in range(self.vpWidth):
+            xp = self.vpX + x
+            for y in range(self.vpHeight):
+                yp = self.vpY + y
+                self.pixels[yp][xp] = color
+
     def glPoint_NDC(self, x: int, y: int, color:color=None):
 
         if x < -1 or x > 1:
@@ -88,8 +95,11 @@ class Renderer(object):
         if (0 <= x <= self.width) and (0 <= y <= self.height):
             self.pixels[int(y)][int(x)] = color or self.curr_color
 
+    def glLine_NDC(self, v0: V2, v1: V2, color: color = None):
+        print()
 
-    def glLine(self, v0: V2, v1: V2, color: color = None, isViewPort: bool = True):
+
+    def glLine(self, v0: V2, v1: V2, color: color = None):
         x0 = v0.x
         x1 = v1.x
         y0 = v0.y
@@ -118,15 +128,9 @@ class Renderer(object):
 
         for x in range(x0, x1 + 1):
             if steep:
-                if isViewPort:
-                    self.glPoint(y, x, color=color)
-                else:
-                    self.glPointScreen(y, x, color)
+                self.glPoint(y, x, color=color)
             else:
-                if isViewPort:
-                    self.glPoint(x, y, color=color)
-                else:
-                    self.glPointScreen(x, y, color)
+                self.glPoint(x, y, color=color)
 
             offset += m
             if offset >= limit:
