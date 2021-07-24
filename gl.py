@@ -1,5 +1,6 @@
 import struct
 from collections import namedtuple
+from obj import Obj
 
 V2 = namedtuple('Point2', ['x', 'y'])
 
@@ -67,14 +68,14 @@ class Renderer(object):
         self.vpWidth = width
         self.vpHeight = height
 
-    def glViewPortClear(self, color:color):
+    def glViewPortClear(self, color: color):
         for x in range(self.vpWidth):
             xp = self.vpX + x
             for y in range(self.vpHeight):
                 yp = self.vpY + y
                 self.pixels[yp][xp] = color
 
-    def glPoint_NDC(self, x: int, y: int, color:color=None):
+    def glPoint_NDC(self, x: int, y: int, color: color = None):
 
         if x < -1 or x > 1:
             return
@@ -87,7 +88,6 @@ class Renderer(object):
         if (0 <= x <= self.width) and (0 <= y <= self.height):
             self.pixels[int(y)][int(x)] = color or self.curr_color
 
-
     def glPoint(self, x: int, y: int, color: color = None):
         if x < self.vpX or x >= self.vpX + self.vpWidth or y < self.vpY or y >= self.vpY + self.vpHeight:
             return
@@ -96,14 +96,17 @@ class Renderer(object):
             self.pixels[int(y)][int(x)] = color or self.curr_color
 
     def glLine_NDC(self, v0: V2, v1: V2, color: color = None):
-        print()
-
+        ''
 
     def glLine(self, v0: V2, v1: V2, color: color = None):
         x0 = v0.x
         x1 = v1.x
         y0 = v0.y
         y1 = v1.y
+
+        if x0 == x1 and y0 == y1:
+            self.glPoint(x0, y0, color=color)
+            return
 
         dx = abs(x1 - x0)
         dy = abs(y1 - y0)
@@ -137,7 +140,7 @@ class Renderer(object):
                 y += 1 if y0 < y1 else - 1
                 limit += 1
 
-    def glVertex(self, x: int, y: int, color:color=None):
+    def glVertex(self, x: int, y: int, color: color = None):
         if (-1 > x > 1) or (-1 > y > 1):
             raise 'Invalid vertex'
 
@@ -146,6 +149,27 @@ class Renderer(object):
         cX = self.vpX + mX + (mX * x)
         cY = self.vpY + mY + (mY * y)
         self.glPoint(cX, cY, color)
+
+    def glLoadModel(self, filename, scale=V2(1, 1), translate=V2(0.0, 0.0)):
+        model = Obj(filename)
+
+        for face in model.faces:
+            verCount = len(face)
+
+            for v in range(verCount):
+                index0 = face[v][0] - 1
+                index1 = face[(v + 1) % verCount][0] - 1
+
+                vert0 = model.vertices[index0]
+                vert1 = model.vertices[index1]
+
+                x0 = round(vert0[0] * scale.x + translate.x)
+                y0 = round(vert0[1] * scale.y + translate.y)
+
+                x1 = round(vert1[0] * scale.x + translate.x)
+                y1 = round(vert1[1] * scale.y + translate.y)
+
+                self.glLine(V2(x0, y0), V2(x1, y1))
 
     def glFinish(self, filename: str):
         file = open(filename, 'wb')
