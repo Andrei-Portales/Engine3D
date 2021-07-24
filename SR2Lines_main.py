@@ -126,4 +126,4 @@ circle(50, 800, 460, fill=110, color=color(1, 0, 0))
 circle(50, 930, 390, fill=110, color=color(0, 0, 1))
 
 
-rd.glFinish('lab_outputs/lab2.bmp')
+rd.glFinish('lab_outputs/SR2Lines.bmp')
