@@ -2,6 +2,7 @@ import struct
 from collections import namedtuple
 from obj import Obj
 
+
 V2 = namedtuple('Point2', ['x', 'y'])
 
 
@@ -98,7 +99,8 @@ class Renderer(object):
     def glLine_NDC(self, v0: V2, v1: V2, color: color = None):
         ''
 
-    def glLine(self, v0: V2, v1: V2, color: color = None):
+    def glLine(self, v0: V2, v1: V2, color: color = None, returnPoints = False):
+        points = []
         x0 = v0.x
         x1 = v1.x
         y0 = v0.y
@@ -106,7 +108,11 @@ class Renderer(object):
 
         if x0 == x1 and y0 == y1:
             self.glPoint(x0, y0, color=color)
-            return
+
+            if returnPoints:
+                points.append(V2(x0, y0))
+
+            return points
 
         dx = abs(x1 - x0)
         dy = abs(y1 - y0)
@@ -132,13 +138,21 @@ class Renderer(object):
         for x in range(x0, x1 + 1):
             if steep:
                 self.glPoint(y, x, color=color)
+
+                if returnPoints:
+                    points.append(V2(y, x))
             else:
                 self.glPoint(x, y, color=color)
+                
+                if returnPoints:
+                    points.append(V2(x, y))
 
             offset += m
             if offset >= limit:
                 y += 1 if y0 < y1 else - 1
                 limit += 1
+        if returnPoints:
+            return points
 
     def glVertex(self, x: int, y: int, color: color = None):
         if (-1 > x > 1) or (-1 > y > 1):
@@ -155,6 +169,7 @@ class Renderer(object):
 
         for face in model.faces:
             verCount = len(face)
+            lines = []
 
             for v in range(verCount):
                 index0 = face[v][0] - 1
@@ -169,7 +184,47 @@ class Renderer(object):
                 x1 = round(vert1[0] * scale.x + translate.x)
                 y1 = round(vert1[1] * scale.y + translate.y)
 
-                self.glLine(V2(x0, y0), V2(x1, y1))
+                
+                lines.append(self.glLine(V2(x0, y0), V2(x1, y1), returnPoints=True))
+
+            from random import random
+            self.glfillPolygon(lines, color(random(), random(), random()), includeLines=True)
+                
+
+    def glfillPolygon(self, lines, color=color(1, 1, 1), includeLines = True):
+        p = []
+        
+        for n in lines:
+            for m in n:
+                p.append(m)
+
+        ys = [n.y for n in p]
+        ymin = min(set(ys))
+        ymax = max(set(ys))
+
+        for y in range(ymin, ymax + 1):
+            tempx = []
+            xp = [point for point in p if point.y == y]
+            xs = [n.x for n in xp]
+            
+            xmin = min(set(xs))
+            xmax = max(set(xs))
+
+            for x in range(xmin, xmax + 1):
+
+                y2p = [point.y for point in p if point.x == x ]
+
+                y2min = min(y2p)
+                y2max = max(y2p)
+
+                if y2min <= y <= y2max:
+                    if includeLines:
+                        if (x not in xs):
+                            self.glPoint(x, y, color)
+                    else:
+                        self.glPoint(x, y, color)
+
+
 
     def glFinish(self, filename: str):
         file = open(filename, 'wb')
