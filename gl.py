@@ -193,7 +193,7 @@ class Renderer(object):
 
     def glfillPolygon(self, lines, color=color(1, 1, 1), includeLines = True):
         p = []
-
+        
         for n in lines:
             for m in n:
                 p.append(m)
@@ -203,17 +203,12 @@ class Renderer(object):
         ymax = max(ys)
 
         for y in range(ymin, ymax + 1):
-            tempx = []
-            xp = [point for point in p if point.y == y]
-            xs = [n.x for n in xp]
-            
+            xs = [point.x for point in p if point.y == y]
             xmin = min(xs)
             xmax = max(xs)
 
             for x in range(xmin, xmax + 1):
-
-                y2p = [point.y for point in p if point.x == x ]
-
+                y2p = [point.y for point in p if point.x == x]
                 y2min = min(y2p)
                 y2max = max(y2p)
 
