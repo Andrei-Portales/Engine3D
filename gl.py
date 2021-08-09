@@ -1,9 +1,11 @@
 import struct
 from collections import namedtuple
 from obj import Obj
+import a_math as mt
 
 
 V2 = namedtuple('Point2', ['x', 'y'])
+V3 = namedtuple('Point3', ['x', 'y', 'z'])
 
 
 def char(c):
@@ -24,6 +26,23 @@ def dword(d):
 def color(r: float, g: float, b: float):
     # Acepta valores de 0 a 1
     return bytes([int(b * 255), int(g * 255), int(r * 255)])
+
+
+def baryCoords(A, B, C, P):
+    try:
+        # PCB / ABC
+        u = (((B.y - C.y) * (P.x - C.x) + (C.x - B.x) * (P.y - C.y)) /
+             ((B.y - C.y) * (A.x - C.x) + (C.x - B.x) * (A.y - C.y)))
+
+        #PCA / ABC
+        v = (((C.y - A.y) * (P.x - C.x) + (A.x - C.x) * (P.y - C.y)) /
+             ((B.y - C.y) * (A.x - C.x) + (C.x - B.x) * (A.y - C.y)))
+
+        w = 1 - u - v
+
+        return u, v, w
+    except:
+        return -1, -1, -1
 
 
 BLACK = color(0, 0, 0)
@@ -51,8 +70,9 @@ class Renderer(object):
         self.clear_color = color(r, g, b)
 
     def glClear(self):
-        self.pixels = [[self.clear_color for x in range(
-            self.width)] for y in range(self.height)]
+        self.pixels = [[self.clear_color for x in range(self.width)] for y in range(self.height)]
+        self.zbuffer = [[-float('inf') for x in range(self.width)] for y in range(self.height)]
+         
 
     def glColor(self, r: float, g: float, b: float):
         self.curr_color = color(r, g, b)
@@ -99,7 +119,7 @@ class Renderer(object):
     def glLine_NDC(self, v0: V2, v1: V2, color: color = None):
         ''
 
-    def glLine(self, v0: V2, v1: V2, color: color = None, returnPoints = False):
+    def glLine(self, v0: V2, v1: V2, color: color = None, returnPoints=False):
         points = []
         x0 = v0.x
         x1 = v1.x
@@ -143,7 +163,7 @@ class Renderer(object):
                     points.append(V2(y, x))
             else:
                 self.glPoint(x, y, color=color)
-                
+
                 if returnPoints:
                     points.append(V2(x, y))
 
@@ -164,7 +184,53 @@ class Renderer(object):
         cY = self.vpY + mY + (mY * y)
         self.glPoint(cX, cY, color)
 
-    def glLoadModel(self, filename, scale=V2(1, 1), translate=V2(0.0, 0.0)):
+    def glTransform(self, vertex, translate=V3(0, 0, 0), scale=V3(1, 1, 1)):
+        return V3(vertex[0] * scale.x + translate.x, vertex[1] * scale.y + translate.y, vertex[2] * scale.z + translate.z)
+
+    def glLoadModelTriangle(self, filename, scale=V3(1, 1, 1), translate=V3(0.0, 0.0, 0.0), texture=None):
+        model = Obj(filename)
+
+        light = V3(0, 0, 1)
+
+        for face in model.faces:
+            vertCount = len(face)
+
+            index0 = face[0][0] - 1
+            index1 = face[1][0] - 1
+            index2 = face[2][0] - 1
+
+            vert0 = model.vertices[index0]
+            vert1 = model.vertices[index1]
+            vert2 = model.vertices[index2]
+
+            vt0 = model.texcoords[face[0][1] - 1]
+            vt1 = model.texcoords[face[1][1] - 1]
+            vt2 = model.texcoords[face[2][1] - 1]
+
+            a = self.glTransform(vert0, translate, scale)
+            b = self.glTransform(vert1, translate, scale)
+            c = self.glTransform(vert2, translate, scale)
+
+
+            normal = mt.cross(mt.subtract(vert1, vert0), mt.subtract(vert2, vert0))
+            normal = mt.div(normal, mt.norm(normal))
+            intensity = mt.dot(normal, light)  # negativo arreglar libreria
+
+            if intensity > 1:
+                intensity = 1
+            elif intensity < 0:
+                intensity = 0
+
+            self.glTriangle_bc(a, b, c, intensity=intensity, texture=texture, texCoords=(vt0, vt1, vt2))
+
+            if vertCount == 4:
+                vert3 = model.vertices[face[3][0] - 1]
+                vt3 = model.texcoords[face[3][1] - 1]
+                d = self.glTransform(vert3, translate, scale)
+                self.glTriangle_bc(a, c, d, intensity=intensity,
+                                   texture=texture, texCoords=(vt0, vt2, vt3))
+
+    def glLoadModel(self, filename, scale=V2(1, 1), translate=V2(0.0, 0.0), fill=False):
         model = Obj(filename)
 
         for face in model.faces:
@@ -184,16 +250,17 @@ class Renderer(object):
                 x1 = round(vert1[0] * scale.x + translate.x)
                 y1 = round(vert1[1] * scale.y + translate.y)
 
-                
-                lines.append(self.glLine(V2(x0, y0), V2(x1, y1), returnPoints=True))
+                lines.append(self.glLine(
+                    V2(x0, y0), V2(x1, y1), returnPoints=True))
 
-            from random import random
-            self.glfillPolygon(lines, color(random(), random(), random()), includeLines=True)
-                
+            if fill:
+                from random import random
+                self.glPolygon(lines, color(random(), random(),
+                                            random()), includeLines=False)
 
-    def glfillPolygon(self, lines, color=color(1, 1, 1), includeLines = True):
+    def glPolygon(self, lines, color=color(1, 1, 1), includeLines=True):
         p = []
-        
+
         for n in lines:
             for m in n:
                 p.append(m)
@@ -219,6 +286,88 @@ class Renderer(object):
                     else:
                         self.glPoint(x, y, color)
 
+    def glTriangle(self, A: V2, B: V2, C: V2, color=None):
+
+        if A.y < B.y:
+            A, B = B, A
+        if A.y < C.y:
+            A, C = C, A
+        if B.y < C.y:
+            B, C = C, B
+
+        def flatBottomTriangle(v1, v2, v3):
+            try:
+                d_21 = (v2.x - v1.x) / (v2.y - v1.y)
+                d_31 = (v3.x - v1.x) / (v3.y - v1.y)
+            except:
+                pass
+            else:
+                x1 = v2.x
+                x2 = v3.x
+                for y in range(v2.y, v1.y + 1):
+                    self.glLine(V2(int(x1), y), V2(int(x2), y), color)
+                    x1 += d_21
+                    x2 += d_31
+
+        def flatTopTriangle(v1, v2, v3):
+            try:
+                d_31 = (v3.x - v1.x) / (v3.y - v1.y)
+                d_32 = (v3.x - v2.x) / (v3.y - v2.y)
+            except:
+                pass
+            else:
+                x1 = v3.x
+                x2 = v3.x
+
+                for y in range(v3.y, v1.y + 1):
+                    self.glLine(V2(int(x1), y), V2(int(x2), y), color)
+                    x1 += d_31
+                    x2 += d_32
+
+        if B.y == C.y:
+            # triangulo con base inferior plana
+            flatBottomTriangle(A, B, C)
+        elif A.y == B.y:
+            # triangulo con base superior plana
+            flatTopTriangle(A, B, C)
+        else:
+            # dividir el triangulo en dos
+            # dibujar ambos casos
+            # Teorema de intercepto
+            D = V2(A.x + ((B.y - A.y) / (C.y - A.y)) * (C.x - A.x), B.y)
+            flatBottomTriangle(A, B, D)
+            flatTopTriangle(B, D, C)
+
+    def glTriangle_standard(self, A: V2, B: V2, C: V2, color=None):
+        pass
+
+    def glTriangle_bc(self, A: V2, B: V2, C: V2, _color=None, texture=(), texCoords=None, intensity=1):
+        # Bounding box
+        minX = round(min(A.x, B.x, C.x))
+        minY = round(min(A.y, B.y, C.y))
+        maxX = round(max(A.x, B.x, C.x))
+        maxY = round(max(A.y, B.y, C.y))
+
+        for x in range(minX, maxX + 1):
+            for y in range(minY, maxY + 1):
+                u, v, w = baryCoords(A, B, C, V2(x, y))
+
+                if u >= 0 and v >= 0 and w >= 0:
+
+                    z = A.z * u + B.z * v + C.z * w
+
+                    if texture:
+                        tA, tB, tC = texCoords
+                        tx = tA[0] * u + tB[0] * v + tC[0] * w
+                        ty = tA[1] * u + tB[1] * v + tC[1] * w
+                        texColor = texture.getColor(tx, ty)
+                    else:
+                        texColor = color(1,1,1)
+
+           
+                    if z > self.zbuffer[int(y)][int(x)]:
+                        self.glPoint(x, y, color(texColor[2] * intensity / 255, texColor[1] * intensity / 255, texColor[0] * intensity / 255))
+                        self.zbuffer[int(y)][int(x)] = z
 
 
     def glFinish(self, filename: str):

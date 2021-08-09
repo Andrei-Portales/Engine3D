@@ -1,4 +1,9 @@
 # cargar modelos 3d OBJ
+import struct
+
+def color(r: float, g: float, b: float):
+    # Acepta valores de 0 a 1
+    return bytes([int(b * 255), int(g * 255), int(r * 255)])
 
 class Obj(object):
 
@@ -32,3 +37,47 @@ class Obj(object):
                 except ValueError:
                     pass
                 
+
+class Texture(object):
+    def __init__(self, filename):
+        self.filename = filename
+        self.read()
+
+    def read(self):
+        image = open(self.filename, 'rb')
+
+        image.seek(10)
+        headerSize = struct.unpack('=l', image.read(4))[0]
+
+        image.seek(14 + 4)
+        self.width = struct.unpack('=l', image.read(4))[0]
+        self.height = struct.unpack('=l', image.read(4))[0]
+
+        image.seek(headerSize)
+
+        self.pixels = []
+
+        for x in range(self.width):
+            self.pixels.append([])
+            for y in range(self.height):
+               
+                b = ord(image.read(1)) / 255
+                g = ord(image.read(1)) / 255
+                r = ord(image.read(1)) / 255
+
+                self.pixels[x].append(color(r, g, b))
+        
+
+        image.close()
+
+    def getColor(self, tx, ty):
+
+        if 0 <= tx <= 1 and 0 <= ty <= 1:
+            x = round(tx * self.width)
+            y = round(ty * self.height)
+            return self.pixels[y][x] # posiblemente este mal
+        else:
+            return color(0, 0, 0)
+
+
+        

@@ -16,7 +16,7 @@ def draw(points, color=color(1,1,1)):
         p2 = points[(p + 1) if p < len(points) - 1 else 0]
 
         lines.append(rd.glLine(V2(p1[0], p1[1]), V2(p2[0], p2[1]), returnPoints=True))
-    rd.glfillPolygon(lines, color)
+    rd.glPolygon(lines, color)
 
 
 draw([(165, 380), (185, 360), (180, 330), (207, 345), (233, 330), (230, 360), (250, 380), (220, 385), (205, 410), (193, 383)], color(1,0,0)) # estrella
