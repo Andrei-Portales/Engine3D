@@ -2,10 +2,12 @@ import struct
 from collections import namedtuple
 from obj import Obj
 import a_math as mt
+import math
 
 
 V2 = namedtuple('Point2', ['x', 'y'])
 V3 = namedtuple('Point3', ['x', 'y', 'z'])
+V4 = namedtuple('Point4', ['x', 'y', 'z', 'w'])
 
 
 def char(c):
@@ -59,20 +61,21 @@ class Renderer(object):
         self.clear_color = BLACK
         self.curr_color = WHITE
         self.glCreateWindow(width, height)
+        self.glViewMatrix()
+        
 
     def glCreateWindow(self, width: int, height: int):
         self.width = width
         self.height = height
-        self.glViewPort(0, 0, width, height)
         self.glClear()
+        self.glViewPort(0, 0, width, height)
 
     def glClearColor(self, r: float, g: float, b: float):
         self.clear_color = color(r, g, b)
 
     def glClear(self):
         self.pixels = [[self.clear_color for x in range(self.width)] for y in range(self.height)]
-        self.zbuffer = [[-float('inf') for x in range(self.width)] for y in range(self.height)]
-         
+        self.zbuffer = [[ float('inf') for x in range(self.width)] for y in range(self.height)]
 
     def glColor(self, r: float, g: float, b: float):
         self.curr_color = color(r, g, b)
@@ -88,6 +91,12 @@ class Renderer(object):
         self.vpY = y
         self.vpWidth = width
         self.vpHeight = height
+
+        self.viewPortMatrix = [[width/2, 0, 0, x + width / 2],
+                               [0, height/2, 0,  y + height / 2],
+                               [0, 0, 0.5, 0.5],
+                               [0, 0, 0, 1]]
+        self.glProjectionMatrix()
 
     def glViewPortClear(self, color: color):
         for x in range(self.vpWidth):
@@ -184,11 +193,34 @@ class Renderer(object):
         cY = self.vpY + mY + (mY * y)
         self.glPoint(cX, cY, color)
 
-    def glTransform(self, vertex, translate=V3(0, 0, 0), scale=V3(1, 1, 1)):
-        return V3(vertex[0] * scale.x + translate.x, vertex[1] * scale.y + translate.y, vertex[2] * scale.z + translate.z)
+    def glTransform(self, vertex, vMatrix):
+        augVertex = V4(vertex[0], vertex[1], vertex[2], 1)
 
-    def glLoadModelTriangle(self, filename, scale=V3(1, 1, 1), translate=V3(0.0, 0.0, 0.0), texture=None):
+        transVertex = mt.multMatrix4x4AndVector(vMatrix, augVertex)
+
+        transVertex = V3(transVertex[0] / transVertex[3],
+                         transVertex[1] / transVertex[3],
+                         transVertex[2] / transVertex[3])
+
+        return transVertex
+
+    def glCamTransform(self, vertex):
+        augVertex = V4(vertex[0], vertex[1], vertex[2], 1)
+
+        transVertex = mt.multMatrix4x4AndVector(mt.multMatrix4X4(self.viewPortMatrix, mt.multMatrix4X4(
+            self.projectionMatrix, self.viewMatrix)), augVertex)
+
+
+        transVertex = V3(transVertex[0] / transVertex[3],
+                         transVertex[1] / transVertex[3],
+                         transVertex[2] / transVertex[3])
+
+        return transVertex
+
+    def glLoadModelTriangle(self, filename, scale=V3(1, 1, 1), translate=V3(0.0, 0.0, 0.0), texture=None, rotate=V3(0, 0, 0)):
         model = Obj(filename)
+
+        modelMatrix = self.glCreateObjectMatrix(translate, scale, rotate)
 
         light = V3(0, 0, 1)
 
@@ -207,13 +239,19 @@ class Renderer(object):
             vt1 = model.texcoords[face[1][1] - 1]
             vt2 = model.texcoords[face[2][1] - 1]
 
-            a = self.glTransform(vert0, translate, scale)
-            b = self.glTransform(vert1, translate, scale)
-            c = self.glTransform(vert2, translate, scale)
+            a = self.glTransform(vert0, modelMatrix)
+            b = self.glTransform(vert1, modelMatrix)
+            c = self.glTransform(vert2, modelMatrix)
 
+            if vertCount == 4:
+                vert3 = model.vertices[face[3][0] - 1]
+                vt3 = model.texcoords[face[3][1] - 1]
+                d = self.glTransform(vert3, modelMatrix)
 
-            normal = mt.cross(mt.subtract(vert1, vert0), mt.subtract(vert2, vert0))
+            normal = mt.cross(mt.subtract(b, a), mt.subtract(c, a))
+
             normal = mt.div(normal, mt.norm(normal))
+
             intensity = mt.dot(normal, light)  # negativo arreglar libreria
 
             if intensity > 1:
@@ -221,14 +259,52 @@ class Renderer(object):
             elif intensity < 0:
                 intensity = 0
 
-            self.glTriangle_bc(a, b, c, intensity=intensity, texture=texture, texCoords=(vt0, vt1, vt2))
+            a = self.glCamTransform(a)
+            b = self.glCamTransform(b)
+            c = self.glCamTransform(c)
 
             if vertCount == 4:
-                vert3 = model.vertices[face[3][0] - 1]
-                vt3 = model.texcoords[face[3][1] - 1]
-                d = self.glTransform(vert3, translate, scale)
+                d = self.glCamTransform(d)
+
+            self.glTriangle_bc(a, b, c, intensity=intensity,
+                               texture=texture, texCoords=(vt0, vt1, vt2))
+            if vertCount == 4:
                 self.glTriangle_bc(a, c, d, intensity=intensity,
                                    texture=texture, texCoords=(vt0, vt2, vt3))
+
+
+
+    def glViewMatrix(self, translate=V3(0, 0, 0), rotate=V3(0, 0, 0)):
+        camMatrix = self.glCreateObjectMatrix(translate, V3(1, 1, 1), rotate)
+        self.viewMatrix = mt.inv(camMatrix)
+
+    
+    def glLookAt(self, eye, camPosition = V3(0,0,0)):
+        forward = mt.subtract(camPosition, eye)
+        forward = mt.div(forward, mt.norm(forward))
+
+        right = mt.cross(V3(0,1,0), forward)
+        right = mt.div(right, mt.norm(right))
+
+        up = mt.cross(forward, right)
+        up = mt.div(up, mt.norm(up))
+
+        camMatrix = [[right[0], up[0], forward[0], camPosition.x], 
+                     [right[1], up[1], forward[1], camPosition.y], 
+                     [right[2], up[2], forward[2], camPosition.z], 
+                     [0, 0, 0, 1]]
+
+        self.viewMatrix = mt.inv(camMatrix)
+
+
+    def glProjectionMatrix(self, n=0.1, f=1000, fov=60):
+        t = math.tan((mt.deg2rad(fov) / 2) * n)
+        r = t * self.vpWidth / self.vpHeight
+
+        self.projectionMatrix = [[n/r, 0, 0, 0],
+                                 [0, n/t, 0, 0],
+                                 [0, 0, -(f+n)/(f-n), -(2*f*n)/(f-n)],
+                                 [0, 0, -1, 0]]
 
     def glLoadModel(self, filename, scale=V2(1, 1), translate=V2(0.0, 0.0), fill=False):
         model = Obj(filename)
@@ -257,6 +333,44 @@ class Renderer(object):
                 from random import random
                 self.glPolygon(lines, color(random(), random(),
                                             random()), includeLines=False)
+
+    def glCreateObjectMatrix(self, translate=V3(0, 0, 0), scale=V3(1, 1, 1), rotate=V3(0, 0, 0)):
+
+        translateMatrix = [[1, 0, 0, translate.x],
+                           [0, 1, 0, translate.y],
+                           [0, 0, 1, translate.z],
+                           [0, 0, 0, 1]]
+
+        scaleMatrix = [[scale.x, 0, 0, 0],
+                       [0, scale.y, 0, 0],
+                       [0, 0, scale.z, 0],
+                       [0, 0, 0, 1]]
+
+        rotationMatrix = self.glCreateRotateMatrix(rotate=rotate)
+        return mt.multMatrix4X4(mt.multMatrix4X4(translateMatrix, rotationMatrix), scaleMatrix)
+
+    def glCreateRotateMatrix(self, rotate=V3(0, 0, 0)):
+
+        pitch = mt.deg2rad(rotate.x)
+        yaw = mt.deg2rad(rotate.y)
+        roll = mt.deg2rad(rotate.z)
+
+        rotationX = [[1, 0, 0, 0],
+                     [0, math.cos(pitch), -math.sin(pitch), 0],
+                     [0, math.sin(pitch), math.cos(pitch), 0],
+                     [0, 0, 0, 1]]
+
+        rotationY = [[math.cos(yaw), 0, math.sin(yaw), 0],
+                     [0, 1, 0, 0],
+                     [-math.sin(yaw), 0, math.cos(yaw), 0],
+                     [0, 0, 0, 1]]
+
+        rotationZ = [[math.cos(roll), -math.sin(roll), 0, 0],
+                     [math.sin(roll), math.cos(roll), 0, 0],
+                     [0, 0, 1, 0],
+                     [0, 0, 0, 1]]
+
+        return mt.multMatrix4X4(mt.multMatrix4X4(rotationX, rotationY), rotationZ)
 
     def glPolygon(self, lines, color=color(1, 1, 1), includeLines=True):
         p = []
@@ -362,13 +476,16 @@ class Renderer(object):
                         ty = tA[1] * u + tB[1] * v + tC[1] * w
                         texColor = texture.getColor(tx, ty)
                     else:
-                        texColor = color(1,1,1)
+                        texColor = color(1, 1, 1)
 
-           
-                    if z > self.zbuffer[int(y)][int(x)]:
-                        self.glPoint(x, y, color(texColor[2] * intensity / 255, texColor[1] * intensity / 255, texColor[0] * intensity / 255))
-                        self.zbuffer[int(y)][int(x)] = z
-
+                    if x < self.vpX or x >= self.vpX + self.vpWidth or y < self.vpY or y >= self.vpY + self.vpHeight:
+                        pass
+                    else:
+                        if (0 <= x <= self.width) and (0 <= y <= self.height):
+                            if z<=1 and z >= -1 and z < self.zbuffer[int(y)][int(x)]:
+                                self.glPoint(x, y, color(
+                                    texColor[2] * intensity / 255, texColor[1] * intensity / 255, texColor[0] * intensity / 255))
+                                self.zbuffer[int(y)][int(x)] = z
 
     def glFinish(self, filename: str):
         file = open(filename, 'wb')
