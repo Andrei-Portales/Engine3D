@@ -266,11 +266,9 @@ class Renderer(object):
             if vertCount == 4:
                 d = self.glCamTransform(d)
 
-            self.glTriangle_bc(a, b, c, intensity=intensity,
-                               texture=texture, texCoords=(vt0, vt1, vt2))
+            self.glTriangle_bc(a, b, c, intensity=intensity, texture=texture, texCoords=(vt0, vt1, vt2))
             if vertCount == 4:
-                self.glTriangle_bc(a, c, d, intensity=intensity,
-                                   texture=texture, texCoords=(vt0, vt2, vt3))
+                self.glTriangle_bc(a, c, d, intensity=intensity, texture=texture, texCoords=(vt0, vt2, vt3))
 
 
 
@@ -320,11 +318,11 @@ class Renderer(object):
                 vert0 = model.vertices[index0]
                 vert1 = model.vertices[index1]
 
-                x0 = round(vert0[0] * scale.x + translate.x)
-                y0 = round(vert0[1] * scale.y + translate.y)
+                x0 = int(vert0[0] * scale.x + translate.x)
+                y0 = int(vert0[1] * scale.y + translate.y)
 
-                x1 = round(vert1[0] * scale.x + translate.x)
-                y1 = round(vert1[1] * scale.y + translate.y)
+                x1 = int(vert1[0] * scale.x + translate.x)
+                y1 = int(vert1[1] * scale.y + translate.y)
 
                 lines.append(self.glLine(
                     V2(x0, y0), V2(x1, y1), returnPoints=True))
@@ -455,12 +453,12 @@ class Renderer(object):
     def glTriangle_standard(self, A: V2, B: V2, C: V2, color=None):
         pass
 
-    def glTriangle_bc(self, A: V2, B: V2, C: V2, _color=None, texture=(), texCoords=None, intensity=1):
+    def glTriangle_bc(self, A: V2, B: V2, C: V2, _color=None, texture=None, texCoords=None, intensity=1):
         # Bounding box
-        minX = round(min(A.x, B.x, C.x))
-        minY = round(min(A.y, B.y, C.y))
-        maxX = round(max(A.x, B.x, C.x))
-        maxY = round(max(A.y, B.y, C.y))
+        minX = int(min(A.x, B.x, C.x))
+        minY = int(min(A.y, B.y, C.y))
+        maxX = int(max(A.x, B.x, C.x))
+        maxY = int(max(A.y, B.y, C.y))
 
         for x in range(minX, maxX + 1):
             for y in range(minY, maxY + 1):
