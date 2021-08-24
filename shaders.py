@@ -381,7 +381,8 @@ def photo(renderer, **kwargs):
         return 0, 0, 0
 
 
-def desapering(renderer, **kwargs):
+def disappearing(renderer, **kwargs):
+
     u, v, w = kwargs['baryCoords']
     tA, tB, tC = kwargs['texCoords']
     b, g, r = kwargs['color']
@@ -444,3 +445,45 @@ def desapering(renderer, **kwargs):
         return r, g, b
     else:
         return 0, 0, 0
+
+
+def radioactive(renderer, **kwargs):
+
+    u, v, w = kwargs['baryCoords']
+    tA, tB, tC = kwargs['texCoords']
+    b, g, r = kwargs['color']
+    nA, nB, nC = kwargs['normals']
+
+    b /= 255
+    g /= 255
+    r /= 255
+
+    if renderer.active_texture:
+        tx = tA[0] * u + tB[0] * v + tC[0] * w
+        ty = tA[1] * u + tB[1] * v + tC[1] * w
+        texColor = renderer.active_texture.getColor(tx, ty)
+    else:
+        texColor = color(1, 1, 1)
+
+    b *= texColor[0] / 255
+    g *= texColor[1] / 255
+    r *= texColor[2] / 255
+
+    nX = nA[0] * u + nB[0] * v + nC[0] * w
+    nY = nA[1] * u + nB[1] * v + nC[1] * w
+    nZ = nA[2] * u + nB[2] * v + nC[2] * w
+
+    normal = (nX, nY, nZ)
+
+    intensity = mt.dot(normal, renderer.directional_light)
+
+    yellow = 251/255, 1, 0
+
+    r = ((1 - intensity) * yellow[0] + r) / 2
+    g = ((1 - intensity) * yellow[1] + g) / 2
+    b = ((1 - intensity) * yellow[2] + b) / 2
+
+    if intensity > 0:
+        return r, g, b
+    else:
+        return 93/255, 95/255, 0
