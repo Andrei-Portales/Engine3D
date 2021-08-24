@@ -62,7 +62,10 @@ class Renderer(object):
         self.curr_color = WHITE
         self.glCreateWindow(width, height)
         self.glViewMatrix()
-        
+
+        self.active_texture = None
+        self.active_shader = None
+        self.directional_light = V3(0, 0, 1)
 
     def glCreateWindow(self, width: int, height: int):
         self.width = width
@@ -74,8 +77,10 @@ class Renderer(object):
         self.clear_color = color(r, g, b)
 
     def glClear(self):
-        self.pixels = [[self.clear_color for x in range(self.width)] for y in range(self.height)]
-        self.zbuffer = [[ float('inf') for x in range(self.width)] for y in range(self.height)]
+        self.pixels = [[self.clear_color for x in range(
+            self.width)] for y in range(self.height)]
+        self.zbuffer = [[float('inf') for x in range(self.width)]
+                        for y in range(self.height)]
 
     def glColor(self, r: float, g: float, b: float):
         self.curr_color = color(r, g, b)
@@ -124,9 +129,6 @@ class Renderer(object):
 
         if (0 <= x <= self.width) and (0 <= y <= self.height):
             self.pixels[int(y)][int(x)] = color or self.curr_color
-
-    def glLine_NDC(self, v0: V2, v1: V2, color: color = None):
-        ''
 
     def glLine(self, v0: V2, v1: V2, color: color = None, returnPoints=False):
         points = []
@@ -195,13 +197,16 @@ class Renderer(object):
 
     def glTransform(self, vertex, vMatrix):
         augVertex = V4(vertex[0], vertex[1], vertex[2], 1)
-
         transVertex = mt.multMatrix4x4AndVector(vMatrix, augVertex)
-
         transVertex = V3(transVertex[0] / transVertex[3],
                          transVertex[1] / transVertex[3],
                          transVertex[2] / transVertex[3])
+        return transVertex
 
+    def glDirTransform(self, dirVector, vMatrix):
+        augVertex = V4(dirVector[0], dirVector[1], dirVector[2], 0)
+        transVertex = mt.multMatrix4x4AndVector(vMatrix, augVertex)
+        transVertex = V3(transVertex[0], transVertex[1], transVertex[2])
         return transVertex
 
     def glCamTransform(self, vertex):
@@ -210,19 +215,18 @@ class Renderer(object):
         transVertex = mt.multMatrix4x4AndVector(mt.multMatrix4X4(self.viewPortMatrix, mt.multMatrix4X4(
             self.projectionMatrix, self.viewMatrix)), augVertex)
 
-
         transVertex = V3(transVertex[0] / transVertex[3],
                          transVertex[1] / transVertex[3],
                          transVertex[2] / transVertex[3])
 
         return transVertex
 
-    def glLoadModelTriangle(self, filename, scale=V3(1, 1, 1), translate=V3(0.0, 0.0, 0.0), texture=None, rotate=V3(0, 0, 0)):
+    def glLoadModelTriangle(self, filename, scale=V3(1, 1, 1), translate=V3(0.0, 0.0, 0.0), rotate=V3(0, 0, 0)):
         model = Obj(filename)
 
         modelMatrix = self.glCreateObjectMatrix(translate, scale, rotate)
 
-        light = V3(0, 0, 1)
+        rotationMatrix = self.glCreateRotateMatrix(rotate)
 
         for face in model.faces:
             vertCount = len(face)
@@ -235,65 +239,70 @@ class Renderer(object):
             vert1 = model.vertices[index1]
             vert2 = model.vertices[index2]
 
+            if vertCount == 4:
+                vert3 = model.vertices[face[3][0] - 1]
+
             vt0 = model.texcoords[face[0][1] - 1]
             vt1 = model.texcoords[face[1][1] - 1]
             vt2 = model.texcoords[face[2][1] - 1]
 
-            a = self.glTransform(vert0, modelMatrix)
-            b = self.glTransform(vert1, modelMatrix)
-            c = self.glTransform(vert2, modelMatrix)
-
             if vertCount == 4:
-                vert3 = model.vertices[face[3][0] - 1]
                 vt3 = model.texcoords[face[3][1] - 1]
-                d = self.glTransform(vert3, modelMatrix)
 
-            normal = mt.cross(mt.subtract(b, a), mt.subtract(c, a))
-
-            normal = mt.div(normal, mt.norm(normal))
-
-            intensity = mt.dot(normal, light)  # negativo arreglar libreria
-
-            if intensity > 1:
-                intensity = 1
-            elif intensity < 0:
-                intensity = 0
-
-            a = self.glCamTransform(a)
-            b = self.glCamTransform(b)
-            c = self.glCamTransform(c)
+            vn0 = model.nomals[face[0][2] - 1]
+            vn1 = model.nomals[face[1][2] - 1]
+            vn2 = model.nomals[face[2][2] - 1]
 
             if vertCount == 4:
-                d = self.glCamTransform(d)
+                vn3 = model.nomals[face[3][2] - 1]
 
-            self.glTriangle_bc(a, b, c, intensity=intensity, texture=texture, texCoords=(vt0, vt1, vt2))
+            vn0 = self.glDirTransform(vn0, rotationMatrix)
+            vn1 = self.glDirTransform(vn1, rotationMatrix)
+            vn2 = self.glDirTransform(vn2, rotationMatrix)
+
             if vertCount == 4:
-                self.glTriangle_bc(a, c, d, intensity=intensity, texture=texture, texCoords=(vt0, vt2, vt3))
+                vn3 = self.glDirTransform(vn3, rotationMatrix)
 
+            vert0 = self.glTransform(vert0, modelMatrix)
+            vert1 = self.glTransform(vert1, modelMatrix)
+            vert2 = self.glTransform(vert2, modelMatrix)
 
+            if vertCount == 4:
+                vert3 = self.glTransform(vert3, modelMatrix)
+
+            a = self.glCamTransform(vert0)
+            b = self.glCamTransform(vert1)
+            c = self.glCamTransform(vert2)
+
+            if vertCount == 4:
+                d = self.glCamTransform(vert3)
+
+            self.glTriangle_bc(a, b, c, texCoords=(
+                vt0, vt1, vt2), verts=(vert0, vert1, vert2), normals=(vn0, vn1, vn2))
+            if vertCount == 4:
+                self.glTriangle_bc(a, c, d, texCoords=(
+                    vt0, vt2, vt3), verts=(vert0, vert2, vert3), normals=(vn0, vn2, vn3))
 
     def glViewMatrix(self, translate=V3(0, 0, 0), rotate=V3(0, 0, 0)):
         camMatrix = self.glCreateObjectMatrix(translate, V3(1, 1, 1), rotate)
         self.viewMatrix = mt.inv(camMatrix)
 
-    
-    def glLookAt(self, eye, camPosition = V3(0,0,0)):
+    def glLookAt(self, eye, camPosition=V3(0, 0, 0)):
         forward = mt.subtract(camPosition, eye)
         forward = mt.div(forward, mt.norm(forward))
 
-        right = mt.cross(V3(0,1,0), forward)
+        right = mt.cross(V3(0, 1, 0), forward)
         right = mt.div(right, mt.norm(right))
 
         up = mt.cross(forward, right)
         up = mt.div(up, mt.norm(up))
 
-        camMatrix = [[right[0], up[0], forward[0], camPosition.x], 
-                     [right[1], up[1], forward[1], camPosition.y], 
-                     [right[2], up[2], forward[2], camPosition.z], 
+        camMatrix = [[right[0], up[0], forward[0], camPosition.x],
+                     [right[1], up[1], forward[1], camPosition.y],
+                     [right[2], up[2], forward[2], camPosition.z],
                      [0, 0, 0, 1]]
 
         self.viewMatrix = mt.inv(camMatrix)
-
 
     def glProjectionMatrix(self, n=0.1, f=1000, fov=60):
         t = math.tan((mt.deg2rad(fov) / 2) * n)
@@ -450,15 +459,16 @@ class Renderer(object):
             flatBottomTriangle(A, B, D)
             flatTopTriangle(B, D, C)
 
-    def glTriangle_standard(self, A: V2, B: V2, C: V2, color=None):
-        pass
-
-    def glTriangle_bc(self, A: V2, B: V2, C: V2, _color=None, texture=None, texCoords=None, intensity=1):
+    def glTriangle_bc(self, A: V2, B: V2, C: V2, _color=None, texCoords=(), verts=(), normals=()):
         # Bounding box
         minX = int(min(A.x, B.x, C.x))
         minY = int(min(A.y, B.y, C.y))
         maxX = int(max(A.x, B.x, C.x))
         maxY = int(max(A.y, B.y, C.y))
+
+        triangleNormal = mt.cross(mt.subtract(
+            verts[1], verts[0]), mt.subtract(verts[2], verts[0]))
+        triangleNormal = mt.div(triangleNormal, mt.norm(triangleNormal))
 
         for x in range(minX, maxX + 1):
             for y in range(minY, maxY + 1):
@@ -468,21 +478,26 @@ class Renderer(object):
 
                     z = A.z * u + B.z * v + C.z * w
 
-                    if texture:
-                        tA, tB, tC = texCoords
-                        tx = tA[0] * u + tB[0] * v + tC[0] * w
-                        ty = tA[1] * u + tB[1] * v + tC[1] * w
-                        texColor = texture.getColor(tx, ty)
-                    else:
-                        texColor = color(1, 1, 1)
-
                     if x < self.vpX or x >= self.vpX + self.vpWidth or y < self.vpY or y >= self.vpY + self.vpHeight:
                         pass
                     else:
                         if (0 <= x <= self.width) and (0 <= y <= self.height):
-                            if z<=1 and z >= -1 and z < self.zbuffer[int(y)][int(x)]:
-                                self.glPoint(x, y, color(
-                                    texColor[2] * intensity / 255, texColor[1] * intensity / 255, texColor[0] * intensity / 255))
+                            if z <= 1 and z >= -1 and z < self.zbuffer[int(y)][int(x)]:
+
+                                if self.active_shader:
+                                    r,g,b = self.active_shader(self, 
+                                                                 verts=verts, baryCoords=(u, v, w), 
+                                                                 texCoords=texCoords, 
+                                                                 normals=normals, 
+                                                                 triangleNormal=triangleNormal, 
+                                                                 color=_color or self.curr_color,
+                                                                 yValues=(minY, maxY, y)
+                                                                 )
+                                else:
+                                    b, g, r = _color or self.curr_color
+                                    b, g, r = b/255, g/255, r/255
+
+                                self.glPoint(x, y, color(r, g, b))
                                 self.zbuffer[int(y)][int(x)] = z
 
     def glFinish(self, filename: str):
@@ -513,3 +528,11 @@ class Renderer(object):
                 file.write(self.pixels[x][y])
 
         file.close()
+
+        # if self.active_texture:
+        #     tA, tB, tC = texCoords
+        #     tx = tA[0] * u + tB[0] * v + tC[0] * w
+        #     ty = tA[1] * u + tB[1] * v + tC[1] * w
+        #     texColor = self.active_texture.getColor(tx, ty)
+        # else:
+        #     texColor = color(1, 1, 1)
