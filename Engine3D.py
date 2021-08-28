@@ -16,7 +16,7 @@ rd = Renderer(width, height)
 rd.clear_color = color(0.3,0.3,0.3)
 rd.glClear()
 
-rd.active_texture = Texture('textures/model.bmp')
+# rd.active_texture = Texture('textures/model.bmp')
 
 # modelPosition = V3(0, 0, -10)
 
@@ -24,31 +24,31 @@ rd.active_texture = Texture('textures/model.bmp')
 
 
 rd.active_shader = flat
-rd.glLoadModelTriangle('models/model.obj', scale=V3(1.5, 1.5, 1.5), translate=V3(-4, 3, -10), rotate = V3(0, 0, 0))
+rd.glLoadModelTriangle('models/face.obj', scale=V3(1.5, 1.5, 1.5), translate=V3(-4, 3, -10), rotate = V3(0, 0, 0))
 
-rd.active_shader = gourad
-rd.glLoadModelTriangle('models/model.obj', scale=V3(1.5, 1.5, 1.5), translate=V3(0, 3, -10), rotate = V3(0, 0, 0))
+# rd.active_shader = gourad
+# rd.glLoadModelTriangle('models/model.obj', scale=V3(1.5, 1.5, 1.5), translate=V3(0, 3, -10), rotate = V3(0, 0, 0))
 
-rd.active_shader = phong
-rd.glLoadModelTriangle('models/model.obj',  scale=V3(1.5, 1.5, 1.5), translate= V3(4, 3, -10), rotate = V3(0, 0, 0))
+# rd.active_shader = phong
+# rd.glLoadModelTriangle('models/model.obj',  scale=V3(1.5, 1.5, 1.5), translate= V3(4, 3, -10), rotate = V3(0, 0, 0))
 
-rd.active_shader = unlit
-rd.glLoadModelTriangle('models/model.obj',  scale=V3(1.5, 1.5, 1.5), translate= V3(-4, 0, -10), rotate = V3(0, 0, 0))
+# rd.active_shader = unlit
+# rd.glLoadModelTriangle('models/model.obj',  scale=V3(1.5, 1.5, 1.5), translate= V3(-4, 0, -10), rotate = V3(0, 0, 0))
 
-rd.active_shader = toon
-rd.glLoadModelTriangle('models/model.obj',  scale=V3(1.5, 1.5, 1.5), translate= V3(0, 0, -10), rotate = V3(0, 0, 0))
+# rd.active_shader = toon
+# rd.glLoadModelTriangle('models/model.obj',  scale=V3(1.5, 1.5, 1.5), translate= V3(0, 0, -10), rotate = V3(0, 0, 0))
 
-rd.active_shader = photo # rainbow
-rd.glLoadModelTriangle('models/model.obj',  scale=V3(1.5, 1.5, 1.5), translate= V3(4, 0, -10), rotate = V3(0, 0, 0))
+# rd.active_shader = photo # rainbow
+# rd.glLoadModelTriangle('models/model.obj',  scale=V3(1.5, 1.5, 1.5), translate= V3(4, 0, -10), rotate = V3(0, 0, 0))
 
-rd.active_shader = static
-rd.glLoadModelTriangle('models/model.obj',  scale=V3(1.5, 1.5, 1.5), translate= V3(-4, -3.3, -10), rotate = V3(0, 0, 0))
+# rd.active_shader = static
+# rd.glLoadModelTriangle('models/model.obj',  scale=V3(1.5, 1.5, 1.5), translate= V3(-4, -3.3, -10), rotate = V3(0, 0, 0))
 
-rd.active_shader = zebra
-rd.glLoadModelTriangle('models/model.obj',  scale=V3(1.5, 1.5, 1.5), translate= V3(0, -3.3, -10), rotate = V3(0, 0, 0))
+# rd.active_shader = zebra
+# rd.glLoadModelTriangle('models/model.obj',  scale=V3(1.5, 1.5, 1.5), translate= V3(0, -3.3, -10), rotate = V3(0, 0, 0))
 
-rd.active_shader = termic
-rd.glLoadModelTriangle('models/model.obj',  scale=V3(1.5, 1.5, 1.5), translate= V3(4, -3.3, -10), rotate = V3(0, 0, 0))
+# rd.active_shader = termic
+# rd.glLoadModelTriangle('models/model.obj',  scale=V3(1.5, 1.5, 1.5), translate= V3(4, -3.3, -10), rotate = V3(0, 0, 0))
 
 
 rd.glFinish('output.bmp')

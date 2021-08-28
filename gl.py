@@ -491,8 +491,8 @@ class Renderer(object):
                                                                  normals=normals, 
                                                                  triangleNormal=triangleNormal, 
                                                                  color=_color or self.curr_color,
-                                                                 yValues=(minY, maxY, y)
-                                                                 )
+                                                                 yValues=(minY, maxY, y),
+                                                                 xValues=(minX, maxX, x))
                                 else:
                                     b, g, r = _color or self.curr_color
                                     b, g, r = b/255, g/255, r/255

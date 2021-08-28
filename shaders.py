@@ -3,6 +3,23 @@ import a_math as mt
 import random as rn
 
 
+def generatePalette(c1, c2, count):
+    palette = [()] * count
+    palette[0] = c1
+    palette[-1] = c2
+
+    s1 = (c2[0] - c1[0]) / count + 1
+    s2 = (c2[1] - c1[1]) / count + 1
+    s3 = (c2[2] - c1[2]) / count + 1
+
+    for i in range(1, count-1):
+        r = int(c1[0] + (s1 * i))
+        g = int(c1[1] + (s2 * i))
+        b = int(c1[2] + (s3 * i))
+        palette[i] = r, g, b
+
+    return palette
+
 def flat(renderer, **kwargs):
     A, B, C = kwargs['verts']
     u, v, w = kwargs['baryCoords']
@@ -274,7 +291,6 @@ def zebra(renderer, **kwargs):
     else:
         r, g, b = unique
 
-
     b *= intensity
     g *= intensity
     r *= intensity
@@ -303,33 +319,79 @@ def termic(renderer, **kwargs):
 
     intensity = mt.dot(normal, renderer.directional_light)
 
-    if intensity > 0.9:
-        r, g, b = 234, 227, 217
-    elif intensity > 0.8:
-        r, g, b = 236, 220, 107
-    elif intensity > 0.7:
-        r, g, b = 238, 213, 70
+    if intensity < 0:
+        return 0,0,0
+
+    colors = [(234, 227, 217), (236, 220, 107), (238, 213, 70), (238, 167, 27), (238, 123, 28), (238, 66, 70), (148, 40, 85), (93, 37, 82), (37, 35, 75), (30, 29, 61 )]
+    colors.reverse()
+
+
+    if intensity > 0.8:
+        c1 = colors[0]
+        c2 = colors[2]
+        c3 = colors[4]
     elif intensity > 0.6:
-        r, g, b = 238, 167, 27
-    elif intensity > 0.5:
-        r, g, b = 238, 123, 28
+        c1 = colors[2]
+        c2 = colors[4]
+        c3 = colors[6]
     elif intensity > 0.4:
-        r, g, b = 238, 66, 70
-    elif intensity > 0.3:
-        r, g, b = 148, 40, 85
+        c1 = colors[4]
+        c2 = colors[6]
+        c3 = colors[8]
     elif intensity > 0.2:
-        r, g, b = 93, 37, 82
+        c1 = colors[6]
+        c2 = colors[8]
+        c3 = colors[9]
     else:
-        r, g, b = 37, 35, 75
+        c1 = colors[8]
+        c2 = colors[9]
+        c3 = colors[9]
+
+    palette = generatePalette(c1, c2, 20)
+    palette.reverse()
+
+    palette[1] = ((palette[1][0] + palette[0][0]) / 2,
+                  (palette[1][1] + palette[0][1]) / 2,
+                  (palette[1][2] + palette[0][2]) / 2)
+
+    palette[2] = ((palette[2][0] + palette[1][0]) / 2,
+                  (palette[2][1] + palette[1][1]) / 2,
+                  (palette[2][2] + palette[1][2]) / 2)
+
+
+    palette[3] = ((palette[3][0] + palette[2][0]) / 2,
+                  (palette[3][1] + palette[2][1]) / 2,
+                  (palette[3][2] + palette[2][2]) / 2)
+
+    palette[4] = ((palette[4][0] + palette[3][0]) / 2,
+                  (palette[4][1] + palette[3][1]) / 2,
+                  (palette[4][2] + palette[3][2]) / 2)
+
+    p2 = generatePalette(c2, c3, 20)
+    p2.reverse()
+
+    palette[0] = ((palette[1][0] + p2[19][0]) / 2, 
+                  (palette[1][1] + p2[19][1]) / 2, 
+                  (palette[1][2] + p2[19][2]) / 2)
+
+    position = abs(int((intensity * 100) % 20)) 
+
+    if position < 0:
+        position = 0
+
+    r, g, b = palette[position]
+
+    
+    r = r if r <= 255 else 255
+    g = g if r <= 255 else 255
+    b = b if r <= 255 else 255
 
     b /= 255
     g /= 255
     r /= 255
 
-    if intensity > 0:
-        return r, g, b
-    else:
-        return 0, 0, 0
+    return r, g, b
+
 
 
 def photo(renderer, **kwargs):
@@ -350,35 +412,76 @@ def photo(renderer, **kwargs):
 
     intensity = mt.dot(normal, renderer.directional_light)
 
-    if intensity > 0.85:
-        r, g, b = 255, 255, 255
-    elif intensity > 0.7:
-        r, g, b = 191, 49, 6
+    if intensity < 0:
+        return 0,0,0
+
+    colors = [(255, 255, 255),( 191, 49, 6), (0, 3, 204), (142, 127, 0), (116, 27, 191), (0, 0, 0), (243, 128, 0), (0, 0, 12), (40, 40, 40), (20, 20, 20)]
+
+    if intensity > 0.8:
+        c1 = colors[0]
+        c2 = colors[1]
+        c3 = colors[4]
     elif intensity > 0.6:
-        r, g, b = 0, 3, 204
-    elif intensity > 0.5:
-        r, g, b = 142, 127, 0
+        c1 = colors[1]
+        c2 = colors[4]
+        c3 = colors[6]
     elif intensity > 0.4:
-        r, g, b = 116, 27, 191
-    elif intensity > 0.3:
-        r, g, b = 0, 0, 0
+        c1 = colors[4]
+        c2 = colors[6]
+        c3 = colors[8]
     elif intensity > 0.2:
-        r, g, b = 243, 128, 0
-    elif intensity > 0.1:
-        r, g, b = 0, 0, 12
-    elif intensity > 0.05:
-        r, g, b = 40, 40, 40
+        c1 = colors[6]
+        c2 = colors[8]
+        c3 = colors[9]
     else:
-        r, g, b = 20, 20, 20
+        c1 = colors[8]
+        c2 = colors[9]
+        c3 = colors[9]
+
+    palette = generatePalette(c1, c2, 20)
+    palette.reverse()
+
+    palette[1] = ((palette[1][0] + palette[0][0]) / 2,
+                  (palette[1][1] + palette[0][1]) / 2,
+                  (palette[1][2] + palette[0][2]) / 2)
+
+    palette[2] = ((palette[2][0] + palette[1][0]) / 2,
+                  (palette[2][1] + palette[1][1]) / 2,
+                  (palette[2][2] + palette[1][2]) / 2)
+
+
+    palette[3] = ((palette[3][0] + palette[2][0]) / 2,
+                  (palette[3][1] + palette[2][1]) / 2,
+                  (palette[3][2] + palette[2][2]) / 2)
+
+    palette[4] = ((palette[4][0] + palette[3][0]) / 2,
+                  (palette[4][1] + palette[3][1]) / 2,
+                  (palette[4][2] + palette[3][2]) / 2)
+
+    p2 = generatePalette(c2, c3, 20)
+    p2.reverse()
+
+    palette[0] = ((palette[1][0] + p2[19][0]) / 2, 
+                  (palette[1][1] + p2[19][1]) / 2, 
+                  (palette[1][2] + p2[19][2]) / 2)
+
+    position = abs(int((intensity * 100) % 20)) 
+
+    if position < 0:
+        position = 0
+
+    r, g, b = palette[position]
+
+    
+    r = r if r <= 255 else 255
+    g = g if r <= 255 else 255
+    b = b if r <= 255 else 255
 
     b /= 255
     g /= 255
     r /= 255
 
-    if intensity > 0:
-        return r, g, b
-    else:
-        return 0, 0, 0
+    return r, g, b
 
 
 def disappearing(renderer, **kwargs):
@@ -487,3 +590,4 @@ def radioactive(renderer, **kwargs):
         return r, g, b
     else:
         return 93/255, 95/255, 0
+
